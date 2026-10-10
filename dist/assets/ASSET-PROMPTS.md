@@ -47,3 +47,17 @@ Original: `/Users/surajsingh/.codex/generated_images/01a123f0-923c-70a1-91bc-145
 Final prompt:
 
 Use case: photorealistic-natural. Asset type: production PBR diffuse/albedo surface texture PNG for tiling contemporary 3D architectural building cladding. Primary request: seamless photoreal contemporary warm grey limestone-concrete architectural cladding surface, viewed perfectly flat from directly overhead, fully filling a square 1024 by 1024 pixel image edge to edge. Subject/material: pale warm grey mineral limestone, elegant contemporary honed finish, subtle fine grain, extremely restrained small pores and softly mottled natural grey-beige stone variation. Composition: uniform scale, flat orthographic surface scan, perfectly seamless wrap in both horizontal and vertical directions, matching edges without a visible repeating border. Lighting: completely even diffuse illumination, no directional shadows, highlights, ambient occlusion or lighting gradients; pure physically plausible base color/albedo map. No grout lines, panel seams, marble veins, cracks, tile divisions, borders, perspective, text, symbols, scenery, watermark, stains, or coarse particles. Real photography-quality detailed stone color that remains subtle over large building surfaces. Opaque background.
+
+## westhaven-emblem-original.png
+
+Generation mode: built-in `image_gen.imagegen`, transparent background. Original preserved at `/Users/surajsingh/.codex/generated_images/01a123ef-57f3-7a22-ac0a-06b36bc1bd79/exec-6b477b45-e9cd-41d2-80d8-0610a581e7b5.png`. Optimized derivatives: westhaven-emblem.png (192px) and favicon.png (64px).
+
+Prompt: A premium architectural W monogram formed by three elegant sage and deep forest green towers with warm limestone edges, subtle champagne metal, refined realistic materials and soft studio lighting. A clean centered silhouette with genuine transparent alpha, no wordmark, slogan, border, badge, or extra text. Precise architectural geometry, crisp edges, polished and readable at icon size.
+
+## office-facade.png
+
+Generation mode: built-in `image_gen.imagegen`, opaque background. Original preserved at `/Users/surajsingh/.codex/generated_images/01a123ef-57f3-7a22-ac0a-06b36bc1bd79/exec-aa4235f9-6273-42a2-b2aa-b06ca61a49ff.png`. Optimized derivative: office-facade.jpg.
+
+Prompt: Create a square seamless photographic office facade texture, perfectly straight-on and orthographic, filling the frame. Six columns and eight floors of realistic office glazing with slim dark aluminum mullions and gray stone spandrels. Nighttime offices, around 40% of windows warmly lit, varied visible desks, chairs, lamps, curtains and plants, others dark with subtle reflections. Authentic real building materials and detailed interior depth. This is a reusable 3D facade albedo texture, with even framing and matching edges: no outside building silhouette, perspective, sky, road, signs, logos, text, baked bloom, or watermarks. Photography quality, restrained colors, crisp believable detail.
+
+The generated source contains seven visible floor rows; world textures use the actual seven-row image for correct floor proportions.

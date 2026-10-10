@@ -1,121 +1,88 @@
 import * as THREE from './vendor/three.module.js';
 
-const isRemoved = (box, destruction) => !!destruction?.isDestroyed?.(box.object, box.index);
+const removed = (box, destruction) => box.object && destruction?.isDestroyed(box.object, box.index);
+const inside = (p, r, inset = 0) => p.x >= r.minX + inset && p.x <= r.maxX - inset && p.z >= r.minZ + inset && p.z <= r.maxZ - inset;
+const bridgeRect = b => b.minX === undefined ? {minX:b.x-b.width/2,maxX:b.x+b.width/2,minZ:b.minZ??b.startZ??412,maxZ:b.maxZ??b.endZ??540} : b;
 
-export function getSurfaceHeight(point, { colliders = [], destruction, worldScale = 3 } = {}) {
-  const s = Math.max(.01, worldScale);
-  let height = .22 * s;
-  if (point.z >= 8 * s && point.z <= 17 * s && Math.abs(point.x - 10 * s) <= 1.075 * s) height = 1.03 * s;
-  for (const box of colliders) {
-    if (isRemoved(box, destruction)) continue;
-    if (Math.abs(point.x - box.center.x) <= Math.abs(box.scale.x) / 2 + .05
-      && Math.abs(point.z - box.center.z) <= Math.abs(box.scale.z) / 2 + .05) {
-      height = Math.max(height, box.center.y + Math.abs(box.scale.y) / 2 + .02);
-    }
+export function groundHeight(point, {bridges = [], floorY = .15} = {}) {
+  let height = floorY;
+  for (const bridge of bridges) {
+    const rect = bridgeRect(bridge), start = bridge.rampStart ?? rect.minZ - 17, end = bridge.rampEnd ?? rect.minZ;
+    if (point.x < rect.minX || point.x > rect.maxX || point.z < start || point.z > rect.maxZ) continue;
+    height = Math.max(height, THREE.MathUtils.lerp(floorY, bridge.height ?? 1.35, THREE.MathUtils.clamp((point.z-start)/Math.max(1,end-start),0,1)));
   }
   return height;
 }
 
-export function blockedByBuilding(point, { colliders = [], destruction, margin = .3 } = {}) {
-  for (const box of colliders) {
-    if (isRemoved(box, destruction)) continue;
-    if (point.y >= box.center.y + Math.abs(box.scale.y) / 2 - .1) continue;
-    if (Math.abs(point.x - box.center.x) < Math.abs(box.scale.x) / 2 + margin
-      && Math.abs(point.z - box.center.z) < Math.abs(box.scale.z) / 2 + margin) return true;
+export function getSurfaceHeight(point, options = {}) {
+  let height = groundHeight(point, options);
+  for (const box of options.colliders || []) {
+    if (removed(box, options.destruction)) continue;
+    if (Math.abs(point.x-box.center.x) <= Math.abs(box.scale.x)/2+.05 && Math.abs(point.z-box.center.z) <= Math.abs(box.scale.z)/2+.05) height = Math.max(height,box.center.y+Math.abs(box.scale.y)/2+.02);
   }
-  return false;
+  return height;
 }
 
-// Heading is the hero's yaw: 0 faces -Z. Vehicle dimensions are real metres.
-export function constrainGroundMove(old, next, {
-  colliders = [], destruction, driving = false, worldScale = 3, heading = 0,
-} = {}) {
-  const s = Math.max(.01, worldScale);
-  const forwardX = -Math.sin(heading), forwardZ = -Math.cos(heading);
-  const rightX = Math.cos(heading), rightZ = -Math.sin(heading);
-  const halfLength = driving ? 2.2 : .24;
-  const halfWidth = driving ? 1 : .24;
-  const extentX = Math.abs(forwardX) * halfLength + Math.abs(rightX) * halfWidth;
-  const extentZ = Math.abs(forwardZ) * halfLength + Math.abs(rightZ) * halfWidth;
-  const minX = -19.5 * s, maxX = 19.5 * s;
-  const minZ = -16.5 * s, maxZ = 17 * s;
-  const shore = 8.25 * s, bridgeX = 10 * s, bridgeHalfWidth = 1.075 * s;
-  const offsets = [
-    [forwardX * halfLength + rightX * halfWidth, forwardZ * halfLength + rightZ * halfWidth],
-    [forwardX * halfLength - rightX * halfWidth, forwardZ * halfLength - rightZ * halfWidth],
-    [-forwardX * halfLength - rightX * halfWidth, -forwardZ * halfLength - rightZ * halfWidth],
-    [-forwardX * halfLength + rightX * halfWidth, -forwardZ * halfLength + rightZ * halfWidth],
-  ];
+export function blockedByBuilding(point, {colliders = [], destruction, margin = .28} = {}) {
+  return colliders.some(box => !removed(box,destruction) && point.y < box.center.y+Math.abs(box.scale.y)/2-.07 && point.y+1.7 > box.center.y-Math.abs(box.scale.y)/2 && Math.abs(point.x-box.center.x)<Math.abs(box.scale.x)/2+margin && Math.abs(point.z-box.center.z)<Math.abs(box.scale.z)/2+margin);
+}
 
-  function supported(point) {
-    for (const [x, z] of offsets) {
-      const px = point.x + x, pz = point.z + z;
-      if (px < minX || px > maxX || pz < minZ || pz > maxZ) return false;
-      if (pz > shore && Math.abs(px - bridgeX) > bridgeHalfWidth) return false;
-    }
-    // Corners can straddle the concave shore/bridge junction; test crossing edges too.
-    for (let i = 0; i < offsets.length; i++) {
-      const a = offsets[i], b = offsets[(i + 1) % offsets.length];
-      const az = point.z + a[1], bz = point.z + b[1];
-      if ((az < shore && bz > shore) || (bz < shore && az > shore)) {
-        const fraction = (shore - az) / (bz - az);
-        const x = point.x + a[0] + (b[0] - a[0]) * fraction;
-        if (Math.abs(x - bridgeX) > bridgeHalfWidth) return false;
-      }
+export function groundFootprintSupported(point, {heading=0,driving=false,bounds={minX:-630,maxX:630,minZ:-540,maxZ:540},waterAreas=[],bridges=[]}={}) {
+  const fx=-Math.sin(heading),fz=-Math.cos(heading),rx=Math.cos(heading),rz=-Math.sin(heading),length=driving?2.2:.25,width=driving?1:.25;
+  const corners=[[fx*length+rx*width,fz*length+rz*width],[fx*length-rx*width,fz*length-rz*width],[-fx*length-rx*width,-fz*length-rz*width],[-fx*length+rx*width,-fz*length+rz*width]];
+  const rects=bridges.map(bridgeRect),support=p=>inside(p,bounds)&&(!waterAreas.some(w=>inside(p,w))||rects.some(b=>inside(p,b)));
+  const allRects=[bounds,...waterAreas,...rects],xs=allRects.flatMap(r=>[r.minX,r.maxX]),zs=allRects.flatMap(r=>[r.minZ,r.maxZ]);
+  for(let i=0;i<4;i++){
+    const a=corners[i],b=corners[(i+1)%4],dx=b[0]-a[0],dz=b[1]-a[1],cuts=[0,1];
+    if(Math.abs(dx)>1e-9)for(const x of xs){const t=(x-point.x-a[0])/dx;if(t>0&&t<1)cuts.push(t);}
+    if(Math.abs(dz)>1e-9)for(const z of zs){const t=(z-point.z-a[1])/dz;if(t>0&&t<1)cuts.push(t);}
+    cuts.sort((x,y)=>x-y);
+    for(let j=0;j<cuts.length;j++){const t=cuts[j];if(!support({x:point.x+a[0]+dx*t,z:point.z+a[1]+dz*t}))return false;if(j){const mid=(t+cuts[j-1])/2;if(!support({x:point.x+a[0]+dx*mid,z:point.z+a[1]+dz*mid}))return false;}}
+  }
+  return true;
+}
+
+// A rotated vehicle uses a complete 4.4 × 2 metre footprint; corners and edges must be on solid land.
+export function constrainGroundMove(old, next, {
+  colliders = [], destruction, driving = false, heading = 0,
+  bounds = {minX:-630,maxX:630,minZ:-540,maxZ:540}, waterAreas = [], bridges = [],
+} = {}) {
+  const fx=-Math.sin(heading),fz=-Math.cos(heading),rx=Math.cos(heading),rz=-Math.sin(heading);
+  const length=driving?2.2:.25,width=driving?1:.25,ex=Math.abs(fx)*length+Math.abs(rx)*width,ez=Math.abs(fz)*length+Math.abs(rz)*width;
+  const corners=[[fx*length+rx*width,fz*length+rz*width],[fx*length-rx*width,fz*length-rz*width],[-fx*length-rx*width,-fz*length-rz*width],[-fx*length+rx*width,-fz*length+rz*width]];
+  function valid(p) {
+    if(!groundFootprintSupported(p,{heading,driving,bounds,waterAreas,bridges}))return false;
+    for(const box of colliders){
+      if(removed(box,destruction)||p.y>=box.center.y+Math.abs(box.scale.y)/2-.07||p.y+1.7<=box.center.y-Math.abs(box.scale.y)/2)continue;
+      const bx=Math.abs(box.scale.x)/2+.04,bz=Math.abs(box.scale.z)/2+.04,dx=p.x-box.center.x,dz=p.z-box.center.z;
+      if(Math.abs(dx)>=bx+ex||Math.abs(dz)>=bz+ez)continue;
+      if(Math.abs(dx*fx+dz*fz)>=length+bx*Math.abs(fx)+bz*Math.abs(fz))continue;
+      if(Math.abs(dx*rx+dz*rz)>=width+bx*Math.abs(rx)+bz*Math.abs(rz))continue;
+      return false;
     }
     return true;
   }
-
-  function intersectsBuilding(point) {
-    if (!driving) return blockedByBuilding(point, { colliders, destruction, margin: .24 });
-    for (const box of colliders) {
-      if (isRemoved(box, destruction)) continue;
-      if (point.y >= box.center.y + Math.abs(box.scale.y) / 2 - .1) continue;
-      const bx = Math.abs(box.scale.x) / 2 + .06, bz = Math.abs(box.scale.z) / 2 + .06;
-      const dx = point.x - box.center.x, dz = point.z - box.center.z;
-      // Separating axes keep every part of the rotated car clear of a building.
-      if (Math.abs(dx) >= bx + extentX || Math.abs(dz) >= bz + extentZ) continue;
-      if (Math.abs(dx * forwardX + dz * forwardZ) >= halfLength + bx * Math.abs(forwardX) + bz * Math.abs(forwardZ)) continue;
-      if (Math.abs(dx * rightX + dz * rightZ) >= halfWidth + bx * Math.abs(rightX) + bz * Math.abs(rightZ)) continue;
-      return true;
-    }
-    return false;
+  const desired=new THREE.Vector3(THREE.MathUtils.clamp(next.x,bounds.minX+ex,bounds.maxX-ex),next.y,THREE.MathUtils.clamp(next.z,bounds.minZ+ez,bounds.maxZ-ez));
+  if(valid(desired))return desired;
+  const origin=new THREE.Vector3(old.x,next.y,old.z),stopped=origin.clone();
+  if(valid(origin)){
+    let low=0,high=1;for(let i=0;i<12;i++){const t=(low+high)/2;stopped.lerpVectors(origin,desired,t);if(valid(stopped))low=t;else high=t;}stopped.lerpVectors(origin,desired,low);
   }
+  const slides=[new THREE.Vector3(desired.x,next.y,stopped.z),new THREE.Vector3(stopped.x,next.y,desired.z)].filter(valid).sort((a,b)=>b.distanceToSquared(origin)-a.distanceToSquared(origin));
+  return slides[0]||stopped;
+}
 
-  const valid = point => supported(point) && !intersectsBuilding(point);
-  const desired = new THREE.Vector3(
-    THREE.MathUtils.clamp(next.x, minX + extentX, maxX - extentX), next.y,
-    THREE.MathUtils.clamp(next.z, minZ + extentZ, maxZ - extentZ),
-  );
-  if (valid(desired)) return desired;
-
-  const origin = new THREE.Vector3(old.x, next.y, old.z);
-  if (!supported(origin)) {
-    // Recover cleanly if driving is enabled while the hero is flying over water.
-    const land = desired.clone();
-    land.z = Math.min(land.z, shore - extentZ - .001);
-    const bridge = desired.clone();
-    bridge.x = bridgeX;
-    bridge.z = THREE.MathUtils.clamp(bridge.z, 8 * s + extentZ, maxZ - extentZ);
-    const recovery = [land, bridge].filter(valid).sort((a, b) => a.distanceToSquared(desired) - b.distanceToSquared(desired));
-    if (recovery.length) return recovery[0];
+// Shorten the follow camera before it passes through a solid wall or facade.
+export function cameraClearance(target, desired, {colliders=[],destruction,margin=.2}={}) {
+  const delta=desired.clone().sub(target),length=delta.length();if(length<.01)return desired.clone();
+  const ray=new THREE.Ray(target,delta.divideScalar(length)),hit=new THREE.Vector3();let nearest=length;
+  for(const box of colliders){
+    if(removed(box,destruction))continue;
+    if(Math.abs(box.center.x-target.x)>length+Math.abs(box.scale.x)/2+margin || Math.abs(box.center.z-target.z)>length+Math.abs(box.scale.z)/2+margin)continue;
+    const half=box.scale.clone().multiplyScalar(.5).addScalar(margin),bounds=new THREE.Box3(box.center.clone().sub(half),box.center.clone().add(half));
+    // Furniture overlapping the target must not trap the camera inside the actor.
+    if(bounds.containsPoint(target))continue;
+    if(ray.intersectBox(bounds,hit)){const distance=hit.distanceTo(target);if(distance<nearest)nearest=Math.max(.65,distance-.15);}
   }
-
-  // Reach the obstacle, then retain movement parallel to its edge.
-  let low = 0, high = 1;
-  const stopped = origin.clone();
-  if (valid(origin)) {
-    for (let i = 0; i < 12; i++) {
-      const fraction = (low + high) / 2;
-      stopped.lerpVectors(origin, desired, fraction);
-      if (valid(stopped)) low = fraction;
-      else high = fraction;
-    }
-    stopped.lerpVectors(origin, desired, low);
-  }
-  const slideX = new THREE.Vector3(desired.x, next.y, stopped.z);
-  const slideZ = new THREE.Vector3(stopped.x, next.y, desired.z);
-  const slides = [slideX, slideZ].filter(valid);
-  slides.sort((a, b) => b.distanceToSquared(origin) - a.distanceToSquared(origin));
-  return slides[0] || stopped;
+  return target.clone().addScaledVector(ray.direction,nearest);
 }

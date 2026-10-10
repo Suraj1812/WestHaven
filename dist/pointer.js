@@ -27,13 +27,14 @@ export function bindCanvasSelection(canvas, onTap, onStart = () => {}) {
   }
 
   function start(event) {
-    remember(event, event.button === 0 && event.isPrimary !== false);
+    remember(event, event.button === 0);
     onStart(event);
   }
 
   function outsideStart(event) {
-    // A second finger outside the canvas still invalidates the canvas tap.
-    if (pointers.size && !pointers.has(event.pointerId)) remember(event, false);
+    // A joystick finger is independent of an aimed tap. Canvas pinch gestures
+    // still invalidate taps because both canvas pointers are remembered.
+    if (event.target === canvas && pointers.size && !pointers.has(event.pointerId)) remember(event, false);
   }
 
   function move(event) {
