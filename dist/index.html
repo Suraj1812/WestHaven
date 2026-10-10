@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a111b" />
+  <meta name="description" content="An immersive superhero city sandbox. Explore, fly, drive, and make the night your own." />
+  <title>Westhaven</title>
+  <link rel="icon" type="image/png" href="./assets/favicon.png" />
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body class="night">
+  <svg class="icon-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="icon-menu" viewBox="0 0 24 24"><path d="M5 7h14M5 12h10M5 17h14"/></symbol>
+    <symbol id="icon-sound" viewBox="0 0 24 24"><path d="m11 5-5 4H3v6h3l5 4V5Zm4 3a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/></symbol>
+    <symbol id="icon-flight" viewBox="0 0 24 24"><path d="M12 3c-3 3-4.5 6.5-4.5 11l4.5 2 4.5-2c0-4.5-1.5-8-4.5-11Z"/><path d="M7.7 10 4 14v4l4.5-2M16.3 10l3.7 4v4l-4.5-2M10 19l2 3 2-3"/><circle cx="12" cy="10" r="1.6"/></symbol>
+    <symbol id="icon-car" viewBox="0 0 24 24"><path d="m5 9 2-5h10l2 5M4 10h16v8H4v-8Zm1 8v2m14-2v2M7 14h1m8 0h1M4 10 2 9m18 1 2-1"/></symbol>
+    <symbol id="icon-attack" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.4"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/><circle cx="12" cy="12" r="1.4"/></symbol>
+    <symbol id="icon-camera" viewBox="0 0 24 24"><path d="M3 7h4l2-3h6l2 3h4v13H3V7Z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="icon-reset" viewBox="0 0 24 24"><path d="M4.5 8.5A8 8 0 1 1 4 15M4 4v5h5"/></symbol>
+    <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></symbol>
+    <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="icon-heart" viewBox="0 0 24 24"><path d="M12 20 4.3 12.4a5.1 5.1 0 0 1 7.7-6.7 5.1 5.1 0 0 1 7.7 6.7L12 20Z"/></symbol>
+  </svg>
+  <main class="world" aria-label="Westhaven superhero city sandbox">
+    <canvas id="city-canvas" tabindex="0" aria-label="Interactive city. Move with WASD, press F to fly, E to enter a vehicle, and Space to attack. Drag to look around."></canvas>
+    <div class="vignette" aria-hidden="true"></div>
+
+    <button id="help-toggle" class="quiet-button help-toggle" type="button" aria-label="Show controls" aria-controls="help-panel" aria-expanded="false"><svg class="icon"><use href="#icon-menu"/></svg></button>
+    <button id="sound-toggle" class="quiet-button sound-button" type="button" aria-label="Enable city sounds" aria-pressed="false"><svg class="icon"><use href="#icon-sound"/></svg><span class="sound-slash" aria-hidden="true"></span></button>
+    <aside id="help-panel" class="help-panel" hidden><span class="desktop-help">WASD · F fly · E drive · Space attack</span><span class="touch-help">Move · Drag to look · Tap to act</span></aside>
+
+    <div class="health-status" role="meter" aria-label="Hero health" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><svg class="icon"><use href="#icon-heart"/></svg><div class="health-track"><div id="health-fill"></div></div></div>
+    <div id="mode-indicator" class="mode-indicator" hidden aria-label="Flying"><svg class="icon"><use id="mode-icon" href="#icon-flight"/></svg></div>
+    <output id="speed-indicator" class="speed-indicator" hidden aria-label="Speed">0</output>
+
+    <div id="mini-map" class="mini-map" aria-label="City map">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="map-fade"><stop offset="0" stop-color="#1d3643"/><stop offset="1" stop-color="#101d2b"/></radialGradient><clipPath id="map-clip"><circle cx="50" cy="50" r="46"/></clipPath></defs><circle cx="50" cy="50" r="47" fill="url(#map-fade)" stroke="#aacbd5" stroke-opacity=".16"/><g clip-path="url(#map-clip)"><path d="M79 0h21v100H68l7-22-4-15 9-20-5-14 4-29Z" fill="#214451" fill-opacity=".7"/><g stroke="#87a8b0" stroke-opacity=".23" stroke-width="2"><path d="M10 29h68M5 53h73M10 75h63M28 7v86M51 4v93M70 9v63"/></g><g fill="#41606a" fill-opacity=".57"><rect x="11" y="13" width="10" height="10" rx="1"/><rect x="34" y="13" width="11" height="10" rx="1"/><rect x="57" y="12" width="7" height="12" rx="1"/><rect x="10" y="35" width="12" height="12" rx="1"/><rect x="34" y="35" width="10" height="12" rx="1"/><rect x="56" y="35" width="9" height="13" rx="1"/><rect x="10" y="59" width="12" height="10" rx="1"/><rect x="34" y="59" width="10" height="10" rx="1"/><rect x="56" y="59" width="9" height="10" rx="1"/><rect x="34" y="81" width="10" height="12" rx="1"/><rect x="57" y="81" width="7" height="10" rx="1"/></g><rect x="12" y="80" width="10" height="12" rx="2" fill="#45664d"/><circle cx="50" cy="52" r="12" fill="#78d7d6" fill-opacity=".04"/><path id="map-player" d="m50 46 4 11-4-2-4 2 4-11Z" fill="#a3ebe6"/><circle cx="73" cy="34" r="2" fill="#e2b570" fill-opacity=".8"/></g><path d="m50 1 2.5 6H47.5L50 1Z" fill="#adc4c8" fill-opacity=".85"/></svg>
+    </div>
+
+    <div id="joystick" class="joystick" role="application" aria-label="Touch joystick. Drag to move your hero."><span class="joystick-ticks" aria-hidden="true"></span><div id="joystick-knob" class="joystick-knob"><span></span></div></div>
+
+    <nav class="camera-controls" aria-label="Camera controls"><button id="auto-rotate" class="camera-button" type="button" aria-label="Toggle free camera" aria-pressed="false"><svg class="icon"><use href="#icon-camera"/></svg></button><button id="reset-view" class="camera-button" type="button" aria-label="Reset camera and respawn"><svg class="icon"><use href="#icon-reset"/></svg></button><span class="control-divider" aria-hidden="true"></span><button id="zoom-out" class="camera-button zoom-button" type="button" aria-label="Zoom out"><svg class="icon"><use href="#icon-minus"/></svg></button><button id="zoom-in" class="camera-button zoom-button" type="button" aria-label="Zoom in"><svg class="icon"><use href="#icon-plus"/></svg></button></nav>
+
+    <nav class="action-controls" aria-label="Hero actions"><button id="flight-toggle" class="action-button flight-button" type="button" aria-label="Toggle flight" aria-pressed="false"><svg class="icon"><use href="#icon-flight"/></svg><span class="key-hint" aria-hidden="true">F</span></button><button id="enter-vehicle" class="action-button vehicle-button" type="button" aria-label="Enter or exit vehicle" aria-pressed="false"><svg class="icon"><use href="#icon-car"/></svg><span class="key-hint" aria-hidden="true">E</span></button><button id="attack" class="action-button attack-button" type="button" aria-label="Attack"><svg class="icon"><use href="#icon-attack"/></svg><span class="key-hint" aria-hidden="true">SPACE</span></button></nav>
+
+    <div id="loader" class="loader" role="status" aria-label="Loading city"><img src="./assets/westhaven-emblem.png" width="110" height="110" alt=""/></div>
+    <div id="fallback" class="fallback" hidden><p>Enable graphics acceleration to enter the city.</p><button type="button" onclick="location.reload()" aria-label="Try again"><svg class="icon"><use href="#icon-reset"/></svg></button></div>
+  </main>
+  <script type="module" src="./scene.js"></script>
+</body>
+</html>
